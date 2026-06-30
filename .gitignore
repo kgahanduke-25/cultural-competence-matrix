@@ -1,0 +1,27 @@
+# R
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj.bak
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Python preview helper artifacts
+__pycache__/
+*.pyc
+
+# Keep committed figures (they are the README previews):
+# figures/ is intentionally tracked.
+
+# ---------------------------------------------------------------------------
+# DATA IS PRIVATE — not published in this repository.
+# The scored dataset is available on request (see data/README.md).
+# domains_metadata.csv (the framework definition) IS tracked; the data is not.
+# ---------------------------------------------------------------------------
+data/example_matrix.csv
+data/pluralism_transition.csv

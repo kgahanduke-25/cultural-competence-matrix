@@ -1,0 +1,204 @@
+---
+title: "Cultural Competence Matrix: A Visualization Walkthrough"
+subtitle: "Public-health access in marginalized populations"
+author: "Kamalakanta Gahan"
+date: "`r format(Sys.Date(), '%B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+    code_folding: show
+    fig_width: 9
+    fig_height: 6
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE, message = FALSE, warning = FALSE,
+  fig.align = "center", dpi = 150
+)
+```
+
+## Overview
+
+This notebook walks through the **Cultural Competence Matrix** end to end: it
+loads the scored data, computes access indices, and renders the four figures.
+The framework is population-agnostic — the same code runs on any dataset that
+follows the schema in `data/`. Here it is illustrated with the documented
+**Malayali (Sitheri Hills)** case from the author's MA dissertation, alongside
+illustrative comparison populations.
+
+```{r load}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(forcats)
+
+source("R/load_data.R")
+source("R/scoring.R")
+source("R/theme_ccm.R")
+
+meta      <- load_domains()
+mat       <- load_matrix(meta = meta)
+pluralism <- load_pluralism()
+
+glimpse(mat)
+```
+
+## The six domains
+
+Each domain is grounded in health-services / cultural-competence literature and
+mapped to Betancourt's tri-level model and Andersen's access stages.
+
+```{r domains}
+meta |>
+  select(domain_id, domain, betancourt_level, andersen_stage, access_type) |>
+  knitr::kable()
+```
+
+## Scoring: from cells to access indices
+
+The matrix records an ordinal **0–3** score per (population × domain). We rescale
+to a 0–100 index and split **capacity** (provision: D1–D3) from **realized**
+(dignified use: D4–D6). Their difference is the **conversion gap**, and a simple
+threshold rule assigns a transferable diagnostic label.
+
+```{r indices}
+indices <- summarise_access(mat)
+
+indices |>
+  select(population, composite_index, capacity_index, realized_index,
+         conversion_gap, diagnostic) |>
+  arrange(desc(composite_index)) |>
+  knitr::kable(digits = 1)
+```
+
+A second lens rolls the same scores up to Betancourt's organizational /
+structural / clinical levels:
+
+```{r levels}
+compute_level_profile(mat) |>
+  pivot_wider(names_from = betancourt_level, values_from = level_index) |>
+  knitr::kable(digits = 1)
+```
+
+## Figure 1 — Scored matrix heatmap
+
+The hero view: six domains across all populations.
+
+```{r fig1}
+heat_df <- mat |> mutate(short_label = fct_rev(short_label))
+
+ggplot(heat_df, aes(population, short_label, fill = score)) +
+  geom_tile(color = "white", linewidth = 1.1) +
+  geom_text(aes(label = score), color = "grey15", fontface = "bold", size = 4) +
+  scale_fill_gradient2(low = CCM_GRADIENT_LOW, mid = CCM_GRADIENT_MID,
+                       high = CCM_GRADIENT_HIGH, midpoint = 1.5,
+                       limits = c(0, 3), breaks = 0:3, name = "Score") +
+  scale_x_discrete(position = "top") +
+  labs(title = "Cultural Competence Matrix", x = NULL, y = NULL) +
+  theme_ccm() +
+  theme(axis.text.x = element_text(angle = 20, hjust = 0, face = "bold"),
+        panel.grid = element_blank())
+```
+
+## Figure 2 — Radar profiles
+
+The *shape* of access. The documented case (structural presence, organizational
+and clinical gaps) contrasts with an illustrative profile that inverts it.
+
+```{r fig2, fig.height=7}
+radar_pops <- c("Malayali (Sitheri Hills)", "Remote Indigenous community")
+
+radar_closed <- mat |>
+  filter(population %in% radar_pops) |>
+  select(population, short_label, score) |>
+  mutate(short_label = factor(short_label, levels = levels(meta$short_label))) |>
+  group_by(population) |>
+  group_modify(~ bind_rows(.x, .x[1, ])) |>
+  ungroup()
+
+ggplot(radar_closed, aes(short_label, score, group = population,
+                         color = population, fill = population)) +
+  geom_polygon(alpha = 0.18, linewidth = 1.1) +
+  geom_point(size = 2.6) +
+  coord_polar() +
+  scale_y_continuous(limits = c(0, 3), breaks = 0:3) +
+  scale_color_manual(values = unname(CCM_CAT_COLORS), name = NULL) +
+  scale_fill_manual(values = unname(CCM_CAT_COLORS), name = NULL) +
+  labs(title = "Access profiles", x = NULL, y = NULL) +
+  theme_ccm() +
+  theme(legend.position = "bottom")
+```
+
+## Figure 3 — The conversion gap
+
+Does built capacity become dignified use? Distance between dots = access the
+system provides but does not realize (Andersen).
+
+```{r fig3}
+gap_df <- indices |>
+  mutate(population = fct_reorder(population, composite_index))
+
+gap_long <- gap_df |>
+  pivot_longer(c(capacity_index, realized_index),
+               names_to = "kind", values_to = "index") |>
+  mutate(kind = recode(kind,
+                       capacity_index = "Capacity (provision)",
+                       realized_index = "Realized (dignified use)"))
+
+ggplot(gap_df, aes(y = population)) +
+  geom_segment(aes(x = realized_index, xend = capacity_index, yend = population),
+               color = "grey75", linewidth = 1.6) +
+  geom_point(data = gap_long, aes(x = index, color = kind), size = 4.2) +
+  scale_color_manual(values = c("Capacity (provision)" = "#2166ac",
+                                "Realized (dignified use)" = "#e07a5f"),
+                     name = NULL) +
+  scale_x_continuous(limits = c(0, 100), breaks = seq(0, 100, 25)) +
+  labs(title = "The conversion gap", x = "Access index (0-100)", y = NULL) +
+  theme_ccm() +
+  theme(legend.position = "bottom")
+```
+
+## Figure 4 — Medical pluralism in transition
+
+A case-specific slope chart of the dissertation's directional finding:
+ethnomedicine contracts as the PHC embeds. Values are a schematic of a
+qualitative finding, not measured percentages.
+
+```{r fig4}
+plur <- pluralism |>
+  mutate(system = factor(system,
+                         levels = c("Traditional medicine (Ta-ta)",
+                                    "Primary Health Centre (PHC)",
+                                    "Community Health Centre (CHC)")))
+
+ggplot(plur, aes(period, reliance, group = system, color = system)) +
+  geom_line(linewidth = 1.4) +
+  geom_point(size = 3.4) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 0.8)) +
+  scale_color_manual(values = c("#3d8c5f", "#1b4965", "#e07a5f"), name = NULL) +
+  labs(title = "Medical pluralism in transition (Sitheri Hills)",
+       x = NULL, y = "Share of care-seeking (illustrative)") +
+  theme_ccm() +
+  theme(legend.position = "bottom")
+```
+
+## Interpretation
+
+Read across the indices and the heatmap together. The documented case shows
+relatively strong **structural access** and **trust/pluralism** (the elements the
+state has installed) but weak **organizational representation**, **communication
+fit**, and **dignity** — the elements that require the system to adapt to the
+population. In Betancourt's terms: *structural presence with organizational and
+clinical gaps*. That diagnostic — not the specific scores — is the framework's
+portable output, and it points a program toward the level at which to intervene.
+
+To apply the framework to a new population, edit only `data/example_matrix.csv`;
+every table and figure above regenerates unchanged.
+
+---
+
+*Comparison-population data are synthetic and for illustration only. Construct
+definitions are grounded in PubMed-indexed literature; see the README references.*

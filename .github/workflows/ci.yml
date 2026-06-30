@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  validate-scoring:
+    runs-on: ubuntu-latest
+    name: Validate scoring logic
+    # Note: the scored dataset is private (see data/README.md), so CI exercises
+    # the scoring logic on a small inline synthetic frame rather than real data.
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "release"
+          use-public-rspm: true
+
+      - name: Install dependencies
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            any::dplyr
+            any::tidyr
+
+      - name: Smoke-test scoring logic (synthetic data)
+        run: |
+          Rscript -e '
+            source("R/scoring.R")
+            suppressPackageStartupMessages({library(dplyr); library(tidyr)})
+            doms <- c("D1","D2","D3","D4","D5","D6")
+            acc  <- c("Capacity","Capacity","Capacity","Realized","Realized","Realized")
+            mk <- function(pop, s) data.frame(
+              population = pop, region = "demo", case_type = "synthetic",
+              access_type = acc, score = s, stringsAsFactors = FALSE)
+            mat <- rbind(mk("A", c(1,2,1,2,1,2)), mk("B", c(3,2,3,1,2,1)))
+            idx <- summarise_access(mat)
+            stopifnot(nrow(idx) == 2)
+            stopifnot(all(c("capacity_index","realized_index","conversion_gap",
+                            "diagnostic") %in% names(idx)))
+            stopifnot(all(mat$score >= 0 & mat$score <= 3))
+            cat("Scoring smoke-test passed for", nrow(idx), "populations.\n")
+          '
