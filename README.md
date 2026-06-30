@@ -5,6 +5,7 @@
 ![R](https://img.shields.io/badge/R-ggplot2%20%7C%20dplyr%20%7C%20tidyr%20%7C%20plotly%20%7C%20shiny-1f6feb)
 ![Focus](https://img.shields.io/badge/focus-data%20visualization-3d8c5f)
 ![License](https://img.shields.io/badge/license-MIT-555)
+**🔴 Live interactive app → [kgahanduke-25.github.io/cultural-competence-matrix/app/](https://kgahanduke-25.github.io/cultural-competence-matrix/app/)**   **🌐 Project landing page → [kgahanduke-25.github.io/cultural-competence-matrix/](https://kgahanduke-25.github.io/cultural-competence-matrix/)**
 
 <!-- Replace kgahanduke-25 above with your GitHub username after publishing. -->
 
