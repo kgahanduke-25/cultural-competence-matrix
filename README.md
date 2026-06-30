@@ -1,12 +1,12 @@
 # Cultural Competence Matrix
 ### A Visualization Framework for Public Health Access in Marginalized Populations
 
-[![CI](https://github.com/OWNER/cultural-competence-matrix/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/cultural-competence-matrix/actions/workflows/ci.yml)
+[![CI](https://github.com/kgahanduke-25/cultural-competence-matrix/actions/workflows/ci.yml/badge.svg)](https://github.com/kgahanduke-25/cultural-competence-matrix/actions/workflows/ci.yml)
 ![R](https://img.shields.io/badge/R-ggplot2%20%7C%20dplyr%20%7C%20tidyr%20%7C%20plotly%20%7C%20shiny-1f6feb)
 ![Focus](https://img.shields.io/badge/focus-data%20visualization-3d8c5f)
 ![License](https://img.shields.io/badge/license-MIT-555)
 
-<!-- Replace OWNER above with your GitHub username after publishing. -->
+<!-- Replace kgahanduke-25 above with your GitHub username after publishing. -->
 
 A small, reproducible R project that scores and visualizes how accessible a health
 system is to a marginalized population across six evidence-based domains. The
